@@ -1,14 +1,8 @@
 <?php
-	$dbServer = "localhost";
-	$dbUsername = "***";
-	$dbPassword = "***";
-	$dbName = "***";
-	$conn = mysqli_connect($dbServer, $dbUsername, $dbPassword, $dbName);
-	
-	if($conn == false)
-		die("Prisijungimas prie duomenu bazes buvo blogas<br>".mysqli_connect_error());
-
 require 'steamauth/steamauth.php';
+require 'includes/mysql_login.php';
+require 'includes/config.php';
+require 'includes/functions.php';
 ?>
 <!DOCTYPE html>
 <html>
@@ -16,9 +10,7 @@ require 'steamauth/steamauth.php';
 <meta charset="UTF-8">
 <title>Laikiux daily quiz</title>
 <link rel="icon" href="laikiuxfavicon.png" type="image/png" sizes="16x16">
-<?php
-	//echo '<link href="/stylesheet.css" type="text/css" rel="stylesheet" />';
-?>
+<link href="/stylesheet-event.css" type="text/css" rel="stylesheet" />
 </head>
 
 <body id="laikiuxEvent">
@@ -210,7 +202,7 @@ Atsakius teisingai į klausimą, prašome susisiekti su konkurso organizatoriumi
 	}
 	
 	//Spausdina laimėtojus iš visos databazės.
-	$sqlReadWinners = "select * from LaikiuxWinners";
+	$sqlReadWinners = "select * from LaikiuxWinners order by id desc";
 	$winners = mysqli_query($conn, $sqlReadWinners);
 	
 	if(mysqli_num_rows($winners) > 0)
@@ -296,12 +288,12 @@ Atsakius teisingai į klausimą, prašome susisiekti su konkurso organizatoriumi
 				$shouldWeAddNewEvent = false;
 				echo "<font color='red'>Neįrašėte naujo prizo</font><br>";
 			}
-			//Tikrina ar prizas yra skaičius
-			if(!is_numeric($_POST['newprize']))
-			{
-				$shouldWeAddNewEvent = false;
-				echo "<font color='red'>Prizas turi būti skaičius</font><br>";
-			}
+			//Tikrina ar prizas yra skaičius IŠJUNGTA
+	//		if(!is_numeric($_POST['newprize']))
+	//		{
+	//			$shouldWeAddNewEvent = false;
+	//			echo "<font color='red'>Prizas turi būti skaičius</font><br>";
+		//	}
 			if($_POST['newphoto'] == null)
 			{
 				$shouldWeAddNewEvent = false;
@@ -507,6 +499,7 @@ Atsakius teisingai į klausimą, prašome susisiekti su konkurso organizatoriumi
 
 
 	echo "<p align='right'>Svetainės kūrėjas © <a href='https://steamcommunity.com/id/tortonas' target='_blank'>Tortonas</a>, ";
+	echo "<p align='right'><a href='https://github.com/Tortonas/Event-quiz' target='_blank'>Github open source</a>, ";
 	echo date("Y")."</p>";
 	mysqli_close($conn);
 ?>
