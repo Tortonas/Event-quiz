@@ -35,10 +35,9 @@ require 'includes/functions.php';
 ?>
 
 
-Sveiki atvykę į Laikiux minigames daily quiz<br>
-Šioje svetainėje bus kelis kartus parodyta nuotrauką ir apačioje į langelį reikės įrašyti kas joje pavaizduota.<br>
-Už teisingus atsakymus, gausite prizus žaidimo kreditais!<br>
-Jeigu prie nicko laimėjimo parašyta (sponsored), reiškia konkursą organizavo žaidėjas iš savo lėšų!<br>
+Sveiki atvykę į Laikiux daily quiz<br>
+Šioje svetainėje bus klausimas bei nuotrauką atvaizduojanti klausimą<br>
+Už teisingus atsakymus, gausite prizus žaidimo kreditais arba paslaugomis!<br>
 Atsakius teisingai į klausimą, prašome susisiekti su konkurso organizatoriumi!<br>
 
 <?php
@@ -93,6 +92,7 @@ Atsakius teisingai į klausimą, prašome susisiekti su konkurso organizatoriumi
 	
 	//Egzistuoja kvailas bugas kuris pjaunasi su SQL komandomis, jeigu submissionuose naudoja apostrofą, gali viskas susipjauti.
 	//Todėl šita kodo dalis, tai apsaugo.
+	//UPDATE. Kaip rašiau kodą, nežinojau apie mysqli espace string dalyką.
 	if(isset($_COOKIE["submissionNickname"]))
 	{
 		$temporaryCookie = $_COOKIE["submissionNickname"];
@@ -160,7 +160,9 @@ Atsakius teisingai į klausimą, prašome susisiekti su konkurso organizatoriumi
 			{
 				$sqlSomebodyHasWon = "update LaikiuxSubmission SET HasAnyoneWon='1' where id='1'";
 				mysqli_query($conn, $sqlSomebodyHasWon);
-				$winnerText = $nickname.' '.$EventPrize.' kreditai';
+				//$winnerText = $nickname.' '.$EventPrize.' kreditai';
+				$winnerText = $nickname.' '.$EventPrize;
+				$winnerText = mysqli_real_escape_string($winnerText); //apsaugo nuo sql injection
 				$sqlInsertNewWinner = "insert into LaikiuxWinners (Nickname, organizer) VALUES ('$winnerText','$EventOrganizer')";
 				
 				if(mysqli_query($conn, $sqlInsertNewWinner))
@@ -170,6 +172,7 @@ Atsakius teisingai į klausimą, prašome susisiekti su konkurso organizatoriumi
 				}
 				else
 				{
+					//sitas error neturetu niekada suveikt, nes escapinam stringa, gal
 					echo "Error: ".mysqli_error($conn);
 					echo "<font color='red'>Atsakėte teisingai, tačiau atsakymas neužskaitytas. Savo nickname nenaudokite apostrofo.</font>";
 				}
@@ -223,6 +226,7 @@ Atsakius teisingai į klausimą, prašome susisiekti su konkurso organizatoriumi
 	echo "<br>";
 	
 	//Nustato kokį admin levelį turėtu gauti vartotojas. T.y. tikrina ar jis yra admin duombazėj.
+	//in future: butu zjbs persidaryt sita nedurnu budu
 	$WhichAdminLevel = 0;
 	$AdminNickname = null;
 	$sqlCheckIfAdmin = "select * from LaikiuxAdmins";
@@ -301,10 +305,10 @@ Atsakius teisingai į klausimą, prašome susisiekti su konkurso organizatoriumi
 			}
 			if($shouldWeAddNewEvent)
 			{
-				$NewQuestion = $_POST['newquestion'];
-				$NewAnswer = $_POST['newanswer'];
-				$NewPrize = $_POST['newprize'];
-				$NewPhotoUrl = $_POST['newphoto'];
+				$NewQuestion = mysqli_real_escape_string($_POST['newquestion']);
+				$NewAnswer = mysqli_real_escape_string($_POST['newanswer']);
+				$NewPrize = mysqli_real_escape_string($_POST['newprize']);
+				$NewPhotoUrl = mysqli_real_escape_string($_POST['newphoto']);
 				$sqlCreateNewEvent = "update LaikiuxSubmission SET HasAnyoneWon='0', answer='$NewAnswer', prize='$NewPrize', photolink='$NewPhotoUrl', question='$NewQuestion', organizer='$AdminNickname' where id='1';";
 				if(mysqli_query($conn, $sqlCreateNewEvent))
 				{
@@ -312,7 +316,7 @@ Atsakius teisingai į klausimą, prašome susisiekti su konkurso organizatoriumi
 					header("Refresh:0");
 				}
 				else
-					echo "Error: ".mysqli_error($conn); //Šitas dažniausiai erroras bus, kaip SQL tekste yra apostrofas.
+					echo "Error: ".mysqli_error($conn); //Šitas erroras neturetu suveikt, nes escapinam stringa
 				//Senų hintų ištrinimas
 				$sqlDeleteOldHints = "delete from LaikiuxHints";
 				if(!mysqli_query($conn, $sqlDeleteOldHints))
@@ -332,7 +336,7 @@ Atsakius teisingai į klausimą, prašome susisiekti su konkurso organizatoriumi
 				echo "Neįrašėte hinto<br>";
 			if($_POST['newhint'] != null)
 			{
-				$NewHint = $_POST['newhint'];
+				$NewHint = mysqli_real_escape_string($_POST['newhint']);
 				$sqlSubmitNewHint = "insert into LaikiuxHints(hinttext) VALUES ('$NewHint')";
 				if(mysqli_query($conn, $sqlSubmitNewHint))
 				{
@@ -441,10 +445,10 @@ Atsakius teisingai į klausimą, prašome susisiekti su konkurso organizatoriumi
 				}
 				if($canIAddNewAdmin)
 				{
-					$newAdminIp = $_POST['newadminip'];
-					$newAdminNick = $_POST['newadminnick'];
-					$newAdminLevel = $_POST['newadminlevel'];
-					$newAdminSteamId = $_POST['newadminsteamid'];
+					$newAdminIp = mysqli_real_escape_string($_POST['newadminip']);
+					$newAdminNick = mysqli_real_escape_string($_POST['newadminnick']);
+					$newAdminLevel = mysqli_real_escape_string($_POST['newadminlevel']);
+					$newAdminSteamId = mysqli_real_escape_string($_POST['newadminsteamid']);
 					$addAdminSql = "insert into LaikiuxAdmins (ip, nickname, level, steamid) VALUES ('$newAdminIp', '$newAdminNick', '$newAdminLevel', '$newAdminSteamId')";
 					if(mysqli_query($conn, $addAdminSql))
 						echo "Admin pridėtas<br>";
@@ -467,7 +471,7 @@ Atsakius teisingai į klausimą, prašome susisiekti su konkurso organizatoriumi
 				
 				if($canIRemoveAdmin)
 				{
-					$oldAdminNick = $_POST['oldadminnick'];
+					$oldAdminNick = mysqli_real_escape_string($_POST['oldadminnick']);
 					$removeAdminSql = "delete from LaikiuxAdmins where nickname='$oldAdminNick'";
 					if(mysqli_query($conn, $removeAdminSql))
 						echo "Admin ištrintas<br>";
