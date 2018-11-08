@@ -52,7 +52,7 @@ Atsakius teisingai į klausimą, prašome susisiekti su konkurso organizatoriumi
 	id, question, answer, prize, HasAnyoneWon, photolink, organizer
 	
 	LaikiuxWinners
-	id, Nickname*/
+	id, Nickname, organizer, winnerIp*/
 
 	
 	//Nuotraukos, klausimo bei organizatoriaus įkėlimas į svetainę iš duombazės..
@@ -66,6 +66,30 @@ Atsakius teisingai į klausimą, prašome susisiekti su konkurso organizatoriumi
 	$EventPhotoUrl = null;
 	$EventOrganizer = null;     
 
+	$WhichAdminLevel = 0;
+	$AdminNickname = null;
+	$sqlCheckIfAdmin = "select * from LaikiuxAdmins";
+	$laikiuxAdmins = mysqli_query($conn, $sqlCheckIfAdmin);
+	
+	if(mysqli_num_rows($laikiuxAdmins) > 0)
+	{
+		while($row = mysqli_fetch_assoc($laikiuxAdmins))
+		{
+			if($row['ip'] == $_SERVER['REMOTE_ADDR'])
+			{
+				$WhichAdminLevel = $row['level'];
+				$AdminNickname = $row['nickname'];
+			}
+			if(isset($steamprofile['steamid']))
+			{
+				if($row['steamid'] == $steamprofile['steamid'])
+				{
+					$WhichAdminLevel = $row['level'];
+					$AdminNickname = $row['nickname'];
+				}
+			}
+		}
+	}
 	
 	if(mysqli_num_rows($CurrentDataStatus) == 1)
 	{
@@ -179,7 +203,8 @@ Atsakius teisingai į klausimą, prašome susisiekti su konkurso organizatoriumi
 				//$winnerText = $nickname.' '.$EventPrize.' kreditai';
 				$winnerText = $nickname.' '.$EventPrize;
 				$winnerText = mysqli_real_escape_string($conn, $winnerText); //apsaugo nuo sql injection
-				$sqlInsertNewWinner = "insert into LaikiuxWinners (Nickname, organizer) VALUES ('$winnerText','$EventOrganizer')";
+				$winnerIpForPrizeProtection = $_SERVER['REMOTE_ADDR'];
+				$sqlInsertNewWinner = "insert into LaikiuxWinners (Nickname, organizer, winnerIp) VALUES ('$winnerText','$EventOrganizer', '$winnerIpForPrizeProtection')";
 				
 				if(mysqli_query($conn, $sqlInsertNewWinner))
 				{
@@ -230,7 +255,15 @@ Atsakius teisingai į klausimą, prašome susisiekti su konkurso organizatoriumi
 		//Eina per DB eilučių masyvą
 		while($row = mysqli_fetch_assoc($winners))
 		{
-			echo $row['Nickname']."<br>"; 
+			echo $row['Nickname'];
+			if($WhichAdminLevel > 1)
+			{
+				echo " (".$row['winnerIp'].")<br>"; //sitas reikalinga del to, kad kartais zaidejai savinasi kitu zaideju nickus ir bando apgaut, kad tipo jie laimejo.
+			}
+			else
+			{
+				echo "<br>";
+			} 
 		}
 	}
 	else
@@ -240,33 +273,6 @@ Atsakius teisingai į klausimą, prašome susisiekti su konkurso organizatoriumi
 	}
 	
 	echo "<br>";
-	
-	//Nustato kokį admin levelį turėtu gauti vartotojas. T.y. tikrina ar jis yra admin duombazėj.
-	//in future: butu zjbs persidaryt sita nedurnu budu
-	$WhichAdminLevel = 0;
-	$AdminNickname = null;
-	$sqlCheckIfAdmin = "select * from LaikiuxAdmins";
-	$laikiuxAdmins = mysqli_query($conn, $sqlCheckIfAdmin);
-	
-	if(mysqli_num_rows($laikiuxAdmins) > 0)
-	{
-		while($row = mysqli_fetch_assoc($laikiuxAdmins))
-		{
-			if($row['ip'] == $_SERVER['REMOTE_ADDR'])
-			{
-				$WhichAdminLevel = $row['level'];
-				$AdminNickname = $row['nickname'];
-			}
-			if(isset($steamprofile['steamid']))
-			{
-				if($row['steamid'] == $steamprofile['steamid'])
-				{
-					$WhichAdminLevel = $row['level'];
-					$AdminNickname = $row['nickname'];
-				}
-			}
-		}
-	}
 	
 	//Admin Panelė. Admin privilegijos, jeigu "1", tai paprastas adminas, jeigu "2", tai gali pridėti ir kitus adminus.
 	if($WhichAdminLevel > 0)
