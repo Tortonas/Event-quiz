@@ -1,8 +1,8 @@
 <?php
 require 'steamauth/steamauth.php';
 require 'includes/mysql_login.php';
-require 'includes/config.php';
-require 'includes/functions.php';
+//require 'includes/config.php';
+//require 'includes/functions.php';
 ?>
 <!DOCTYPE html>
 <html>
@@ -92,8 +92,8 @@ Atsakius teisingai į klausimą, prašome susisiekti su konkurso organizatoriumi
 	
 	//Egzistuoja kvailas bugas kuris pjaunasi su SQL komandomis, jeigu submissionuose naudoja apostrofą, gali viskas susipjauti.
 	//Todėl šita kodo dalis, tai apsaugo.
-	//UPDATE. Kaip rašiau kodą, nežinojau apie mysqli espace string dalyką.
-	if(isset($_COOKIE["submissionNickname"]))
+	//UPDATE. Kaip rašiau kodą, nežinojau apie mysqli espace string dalyką, todel jo kaip ir nebereik.
+	/*if(isset($_COOKIE["submissionNickname"]))
 	{
 		$temporaryCookie = $_COOKIE["submissionNickname"];
 		for($i = 0; $i < strlen($temporaryCookie); $i++)
@@ -104,7 +104,7 @@ Atsakius teisingai į klausimą, prašome susisiekti su konkurso organizatoriumi
 				break;
 			}
 		}
-	}
+	}*/
 	
 	//Tikrina ar jau kažkas laimėjo, jeigu ne atkuria spėjimo "mechanizmą", jeigu jau laimėjo, jo nesukuria bei praneša apie tai.
 	if($EventStatus == 0)
@@ -156,13 +156,29 @@ Atsakius teisingai į klausimą, prašome susisiekti su konkurso organizatoriumi
 		{
 			$nickname = $_POST['nickname'];
 			$submission = $_POST['submission']; 
-			if(strtolower($EventAnswer) == strtolower($submission)) // "sklandus patikrinimas" t.y. sumažina abi reikšmes į mažąsias.
+			//Tikrinimas vėl iš duombazės ar nėra laimėtojo jau.
+			$sqlCheckIfThereIsAWinner = "select HasAnyoneWon from LaikiuxSubmission";
+			$checkIfThereIsAWinnerInCaseOfDuplicate = mysqli_query($conn, $sqlCheckIfThereIsAWinner);
+			$canICheckAnswer = true;
+
+
+			//Chekina nuo laimetoju dubliu t.y. kaip yra laimetojas ir kasnros nepareloadines page gali vel laimeti.
+			if(mysqli_num_rows($checkIfThereIsAWinnerInCaseOfDuplicate) > 0)
+			{
+				while($row = mysqli_fetch_assoc($checkIfThereIsAWinnerInCaseOfDuplicate))
+				{
+					if($row['HasAnyoneWon'] == 1)
+						$canICheckAnswer = false;
+				}
+			}
+
+			if(strtolower($EventAnswer) == strtolower($submission) && $canICheckAnswer) // "sklandus patikrinimas" t.y. sumažina abi reikšmes į mažąsias. Ir chekinimas del dubliu.
 			{
 				$sqlSomebodyHasWon = "update LaikiuxSubmission SET HasAnyoneWon='1' where id='1'";
 				mysqli_query($conn, $sqlSomebodyHasWon);
 				//$winnerText = $nickname.' '.$EventPrize.' kreditai';
 				$winnerText = $nickname.' '.$EventPrize;
-				$winnerText = mysqli_real_escape_string($winnerText); //apsaugo nuo sql injection
+				$winnerText = mysqli_real_escape_string($conn, $winnerText); //apsaugo nuo sql injection
 				$sqlInsertNewWinner = "insert into LaikiuxWinners (Nickname, organizer) VALUES ('$winnerText','$EventOrganizer')";
 				
 				if(mysqli_query($conn, $sqlInsertNewWinner))
@@ -305,10 +321,10 @@ Atsakius teisingai į klausimą, prašome susisiekti su konkurso organizatoriumi
 			}
 			if($shouldWeAddNewEvent)
 			{
-				$NewQuestion = mysqli_real_escape_string($_POST['newquestion']);
-				$NewAnswer = mysqli_real_escape_string($_POST['newanswer']);
-				$NewPrize = mysqli_real_escape_string($_POST['newprize']);
-				$NewPhotoUrl = mysqli_real_escape_string($_POST['newphoto']);
+				$NewQuestion = mysqli_real_escape_string($conn, $_POST['newquestion']);
+				$NewAnswer = mysqli_real_escape_string($conn, $_POST['newanswer']);
+				$NewPrize = mysqli_real_escape_string($conn, $_POST['newprize']);
+				$NewPhotoUrl = mysqli_real_escape_string($conn, $_POST['newphoto']);
 				$sqlCreateNewEvent = "update LaikiuxSubmission SET HasAnyoneWon='0', answer='$NewAnswer', prize='$NewPrize', photolink='$NewPhotoUrl', question='$NewQuestion', organizer='$AdminNickname' where id='1';";
 				if(mysqli_query($conn, $sqlCreateNewEvent))
 				{
@@ -336,7 +352,7 @@ Atsakius teisingai į klausimą, prašome susisiekti su konkurso organizatoriumi
 				echo "Neįrašėte hinto<br>";
 			if($_POST['newhint'] != null)
 			{
-				$NewHint = mysqli_real_escape_string($_POST['newhint']);
+				$NewHint = mysqli_real_escape_string($conn, $_POST['newhint']);
 				$sqlSubmitNewHint = "insert into LaikiuxHints(hinttext) VALUES ('$NewHint')";
 				if(mysqli_query($conn, $sqlSubmitNewHint))
 				{
@@ -445,10 +461,10 @@ Atsakius teisingai į klausimą, prašome susisiekti su konkurso organizatoriumi
 				}
 				if($canIAddNewAdmin)
 				{
-					$newAdminIp = mysqli_real_escape_string($_POST['newadminip']);
-					$newAdminNick = mysqli_real_escape_string($_POST['newadminnick']);
-					$newAdminLevel = mysqli_real_escape_string($_POST['newadminlevel']);
-					$newAdminSteamId = mysqli_real_escape_string($_POST['newadminsteamid']);
+					$newAdminIp = mysqli_real_escape_string($conn, $_POST['newadminip']);
+					$newAdminNick = mysqli_real_escape_string($conn, $_POST['newadminnick']);
+					$newAdminLevel = mysqli_real_escape_string($conn, $_POST['newadminlevel']);
+					$newAdminSteamId = mysqli_real_escape_string($conn, $_POST['newadminsteamid']);
 					$addAdminSql = "insert into LaikiuxAdmins (ip, nickname, level, steamid) VALUES ('$newAdminIp', '$newAdminNick', '$newAdminLevel', '$newAdminSteamId')";
 					if(mysqli_query($conn, $addAdminSql))
 						echo "Admin pridėtas<br>";
@@ -471,7 +487,7 @@ Atsakius teisingai į klausimą, prašome susisiekti su konkurso organizatoriumi
 				
 				if($canIRemoveAdmin)
 				{
-					$oldAdminNick = mysqli_real_escape_string($_POST['oldadminnick']);
+					$oldAdminNick = mysqli_real_escape_string($conn, $_POST['oldadminnick']);
 					$removeAdminSql = "delete from LaikiuxAdmins where nickname='$oldAdminNick'";
 					if(mysqli_query($conn, $removeAdminSql))
 						echo "Admin ištrintas<br>";
