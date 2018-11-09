@@ -1,0 +1,10 @@
+Bendra informacija:
+1. Ðioje svetainëje bus klausimas bei nuotraukà atvaizduojanti klausimà.
+2. Uþ teisingus atsakymus, gausite prizus þaidimo kreditais arba paslaugomis!
+3. Atsakius teisingai á klausimà, praðome susisiekti su konkurso organizatoriumi!
+4. Vartotojø kurie atsako á klausimà yra saugomas IP, jeigu kiltu konfliktas tarp 2 þmoniø, kad galima bûtu patvirtinti kuriam suteikti prizà.
+5. Visa svetainë yra open source https://github.com/Tortonas/Event-quiz
+
+Taisyklës:
+1. Radus betkoká bugà, bûtina praneðti savininkui. (Tortonui)
+2. Pasinaudojus bugu atspëjant klausimà, jums gali bûti nesuteiktas prizas.
