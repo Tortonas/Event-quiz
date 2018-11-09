@@ -1,7 +1,7 @@
 <?php
 require 'steamauth/steamauth.php';
 require 'includes/mysql_login.php';
-//require 'includes/config.php';
+require 'includes/config.php';
 //require 'includes/functions.php';
 ?>
 <!DOCTYPE html>
@@ -35,12 +35,10 @@ require 'includes/mysql_login.php';
 ?>
 
 
-Sveiki atvykę į Laikiux daily quiz<br>
-Šioje svetainėje bus klausimas bei nuotrauką atvaizduojanti klausimą<br>
-Už teisingus atsakymus, gausite prizus žaidimo kreditais arba paslaugomis!<br>
-Atsakius teisingai į klausimą, prašome susisiekti su konkurso organizatoriumi!<br>
 
 <?php
+
+
 	/*Reikalingi pavadinimai databazeje
 	LaikiuxAdmins
 	id, ip, nickname, level, steamid
@@ -55,6 +53,9 @@ Atsakius teisingai į klausimą, prašome susisiekti su konkurso organizatoriumi
 	id, Nickname, organizer, winnerIp*/
 
 	
+	echo "Sveiki atvykę į Laikiux daily quiz<br>";
+	echo "<a href='".$WebDomain."/salygos.txt'>Konkurso taisyklės</a><br>";
+
 	//Nuotraukos, klausimo bei organizatoriaus įkėlimas į svetainę iš duombazės..
 	$sqlReadDataBefore ="select * from LaikiuxSubmission";
 	$CurrentDataStatus = mysqli_query($conn, $sqlReadDataBefore);
@@ -134,7 +135,7 @@ Atsakius teisingai į klausimą, prašome susisiekti su konkurso organizatoriumi
 	if($EventStatus == 0)
 	{
 		//Submission pateikimo formą.
-		echo "Prizas jeigu atspėsite, kreditais: ".$EventPrize."<br><br>";
+		echo "Prizas jeigu atspėsite: ".$EventPrize."<br><br>";
 		echo 'Įveskite atsakymą:<br>';
 		echo '<form method="POST">';
 		//Apsaugo nuo bereikalingų spaminamų errorų error liste. Jeigu cookie nėra nustatytas, tai spamins errorus ir vistiek priskirs null.
