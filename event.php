@@ -54,7 +54,7 @@ require 'includes/config.php';
 
 	
 	echo "Sveiki atvykę į Laikiux daily quiz<br>";
-	echo "<a href='".$WebDomain."/salygos.txt'>Konkurso taisyklės</a><br>";
+	echo "<a href='".$WebDomain."/salygos.txt'>Konkurso taisyklės bei bendra informacija</a><br>";
 
 	//Nuotraukos, klausimo bei organizatoriaus įkėlimas į svetainę iš duombazės..
 	$sqlReadDataBefore ="select * from LaikiuxSubmission";
@@ -400,14 +400,26 @@ require 'includes/config.php';
 			echo '</form>';
 			if(isset($_POST['cancelevent']))
 			{
-				$sqlCancelEvent = "update LaikiuxSubmission SET HasAnyoneWon='1' where id='1'";
-				if(mysqli_query($conn, $sqlCancelEvent))
+				//Dalis kodo kuri neleidžia kitiems konkursų organizatoriams stabdyti NE SAVO konkursų.
+				$canIStopTheEvent = false;
+				if($WhichAdminLevel > 1 || $AdminNickname == $EventOrganizer)
+					$canIStopTheEvent = true;
+
+				if($canIStopTheEvent)
 				{
-					echo "Sustabdytas";
-					header("Refresh:0");
+					$sqlCancelEvent = "update LaikiuxSubmission SET HasAnyoneWon='1' where id='1'";
+					if(mysqli_query($conn, $sqlCancelEvent))
+					{
+						echo "Sustabdytas";
+						header("Refresh:0");
+					}
+					else
+						echo "Error: ".mysqli_error($conn);
 				}
 				else
-					echo "Error: ".mysqli_error($conn);
+				{
+					echo "Negalite sustabdyti ne savo konkursą!";
+				}
 			}
 		}
 		//Jeigu konkursas jau laimėtas, jį galima atkurti.
