@@ -2,6 +2,7 @@
 require 'steamauth/steamauth.php';
 require 'includes/mysql_login.php';
 require 'includes/config.php';
+require 'includes/laikiuxduombaze.php';
 //require 'includes/functions.php';
 ?>
 <!DOCTYPE html>
@@ -52,8 +53,12 @@ require 'includes/config.php';
 	LaikiuxWinners
 	id, Nickname, organizer, winnerIp*/
 
-	
 	echo "Sveiki atvykę į Laikiux daily quiz<br>";
+	echo "<font color='red'>Nuo 2018 11 29 paslaugos t.y. VIP užsideda automatiškai</font><br>";
+	echo "<font color='red'>Laimėja paslaugą, paprašykite, kad adminas in game parašytu /reloadadmins arba jums paslauga užsidės po mapo :))))</font><br>";
+	echo "<font color='red'>Also paslaugos užsideda ant IP.</font><br>";
+	echo "<font color='red'>Ateityje planuoju šią sistemą padaryti automatine. T.y. kasdien 18:00 atsinaujins klausimas.</font><br>";
+	echo "<font color='red'>Konkursų organizatorius matote apačioje.</font><br>";
 	echo "<a href='".$WebDomain."/salygos.txt'>Konkurso taisyklės bei bendra informacija</a><br>";
 
 	//Nuotraukos, klausimo bei organizatoriaus įkėlimas į svetainę iš duombazės..
@@ -207,6 +212,18 @@ require 'includes/config.php';
 				$winnerIpForPrizeProtection = $_SERVER['REMOTE_ADDR'];
 				$sqlInsertNewWinner = "insert into LaikiuxWinners (Nickname, organizer, winnerIp) VALUES ('$winnerText','$EventOrganizer', '$winnerIpForPrizeProtection')";
 				
+				
+				//vip uždėjimas
+
+				if(true) //veliau pakeist gal i kazka normalesnio
+				{
+					$twoDaysAfterToday = date("Y-m-d", time() + 172800);
+					$sqlInsertIntoLaikiuxDatabase = "insert into sm_admins (authtype, identity, flags, name, immunity, gr_time_left) 
+						VALUES ('ip', '$winnerIpForPrizeProtection', 'ap', 'laimetojas is tortonas.tk', '98', '$twoDaysAfterToday')";
+
+					mysqli_query($connLaikiux, $sqlInsertIntoLaikiuxDatabase);
+				}
+
 				if(mysqli_query($conn, $sqlInsertNewWinner))
 				{
 					echo "<font color='red'>SVEIKINAME LAIMĖJUS!!!!!!!!!!!</font>";
