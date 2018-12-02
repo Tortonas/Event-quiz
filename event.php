@@ -39,27 +39,93 @@ require 'includes/laikiuxduombaze.php';
 
 <?php
 
+	//Automatinis atsinaujinimas klausimo kasdien ant 18 : 00
 
-	/*Reikalingi pavadinimai databazeje
-	LaikiuxAdmins
-	id, ip, nickname, level, steamid
-	
-	LaikiuxHints
-	id, hinttext
-	
-	LaikiuxSubmission
-	id, question, answer, prize, HasAnyoneWon, photolink, organizer
-	
-	LaikiuxWinners
-	id, Nickname, organizer, winnerIp*/
+	$arReikiaKeistiKlausima = true;
+	$dabartineData  = date('Y-m-d H:i:s');
+	$dabartineDataBeValandu = date('Y-m-d', strtotime("+1 day")) ; //dabartine data be valandu ir plius 1 diena
+
+
+	//Kadangi sitas scriptas turi buti parunintas anksciau negu pats uploadinimas klausimo, o dar duomenu apie current klausima nera, tai reik parunint
+	$sqlReadDataBefore ="select * from LaikiuxSubmission";
+	$CurrentDataStatus = mysqli_query($conn, $sqlReadDataBefore);
+	if(mysqli_num_rows($CurrentDataStatus) == 1)
+	{
+		//Privalo būti 1 row bei jo ID turėtu būti 1!!!!!!
+		while($row = mysqli_fetch_assoc($CurrentDataStatus))
+		{
+			$EventStatus = $row['HasAnyoneWon'];
+			$EventDateTime = $row['dateTime'];
+		}
+	}
+
+	//chekina ar klausimas atsakymas, skipins tik tada kada jis atsakytas
+	if($EventStatus == 0)
+		$arReikiaKeistiKlausima = false;
+
+	//chekina current data ir paskutinio keisto klausimo data
+	if($dabartineData < $EventDateTime)
+	{
+		$arReikiaKeistiKlausima = false;
+	}
+
+	if($arReikiaKeistiKlausima)
+	{
+
+
+		$sqlGetRandomQuestionFromDB = "select * from LaikiuxQuestions";
+
+		$resultsSqlGetRandomQuestionFromDB = mysqli_query($conn, $sqlGetRandomQuestionFromDB);
+
+		$NewAnswer = null;
+		$NewPrize = null;
+		$NewPhotoUrl = null;
+		$NewQuestion = null;
+		$AdminNickname = null;
+
+		$arYraNaujasKlausimasDuomenuBazeje = false;
+
+		if(mysqli_num_rows($resultsSqlGetRandomQuestionFromDB) > 0)
+		{
+			while($row = mysqli_fetch_assoc($resultsSqlGetRandomQuestionFromDB))
+			{
+				$NewAnswer = $row['answer'];
+				$NewPrize = $row['prize'];
+				$NewPhotoUrl = $row['photolink'];
+				$NewQuestion = $row['question'];
+				$AdminNickname = $row['organizer'];
+
+				$idOfThisQuestoin = $row['id'];
+
+				$arYraNaujasKlausimasDuomenuBazeje = true;
+
+				$sqlDeleteThisQuestionFromDB = "delete from LaikiuxQuestions where id='$idOfThisQuestoin'";
+				mysqli_query($conn, $sqlDeleteThisQuestionFromDB);
+
+				break;
+			}
+		}
+
+		$naujaData = $dabartineDataBeValandu." 18:00:00";
+
+
+		if($arYraNaujasKlausimasDuomenuBazeje)
+		{
+			$sqlCreateNewEvent = "update LaikiuxSubmission SET HasAnyoneWon='0', answer='$NewAnswer', prize='$NewPrize', photolink='$NewPhotoUrl',
+				question='$NewQuestion', organizer='$AdminNickname', dateTime='$naujaData' where id='1';";
+			mysqli_query($conn, $sqlCreateNewEvent);
+			$sqlDeleteAllHints = "delete from LaikiuxHints";
+			mysqli_query($conn, $sqlDeleteAllHints);
+		}
+	}
+
+	//---------------------------------------------------------------------------------------------------------------------
 
 	echo "Sveiki atvykę į Laikiux daily quiz<br>";
-	echo "<font color='red'>Nuo 2018 11 29 paslaugos t.y. VIP užsideda automatiškai</font><br>";
-	echo "<font color='red'>Laimėja paslaugą, paprašykite, kad adminas in game parašytu /reloadadmins arba jums paslauga užsidės po mapo :))))</font><br>";
-	echo "<font color='red'>Also paslaugos užsideda ant IP.</font><br>";
-	echo "<font color='red'>Ateityje planuoju šią sistemą padaryti automatine. T.y. kasdien 18:00 atsinaujins klausimas.</font><br>";
-	echo "<font color='red'>Konkursų organizatorius matote apačioje.</font><br>";
+	echo "<font color='red'>Užsidėja VIP, paprašykite, kad adminas in game parašytu /reloadadmins arba jums paslauga užsidės po mapo :))))</font><br>";
 	echo "<a href='".$WebDomain."/salygos.txt'>Konkurso taisyklės bei bendra informacija</a><br>";
+
+	date_default_timezone_set("Europe/Vilnius");
 
 	//Nuotraukos, klausimo bei organizatoriaus įkėlimas į svetainę iš duombazės..
 	$sqlReadDataBefore ="select * from LaikiuxSubmission";
@@ -71,9 +137,13 @@ require 'includes/laikiuxduombaze.php';
 	$EventStatus = null; // 0 - dar niekas nelaimėjo, 1 - jau laimėta.
 	$EventPhotoUrl = null;
 	$EventOrganizer = null;     
+	$EventDateTime = null;
 
 	$WhichAdminLevel = 0;
 	$AdminNickname = null;
+
+	$UserioIP = $_SERVER['REMOTE_ADDR'];
+
 	$sqlCheckIfAdmin = "select * from LaikiuxAdmins";
 	$laikiuxAdmins = mysqli_query($conn, $sqlCheckIfAdmin);
 	
@@ -108,7 +178,7 @@ require 'includes/laikiuxduombaze.php';
 			$EventStatus = $row['HasAnyoneWon'];
 			$EventPhotoUrl = $row['photolink'];
 			$EventOrganizer = $row['organizer'];
-			
+			$EventDateTime = $row['dateTime'];
 		}
 	}
 	else
@@ -116,25 +186,11 @@ require 'includes/laikiuxduombaze.php';
 		echo "ERROR. Nepavyko įkelti nuotraukos, klausimo bei organizatoriaus problema, kad ne 1 row arba jo id ne 1 LaikiuxSubmission db";
 	}
 	
+
 	echo '<img src="'.$EventPhotoUrl.'" alt="Evento nuotrauka"><br>';
 	echo "Dabartinio/paskutinio konkurso organizatorius: ".$EventOrganizer."<br>";
-	echo "<font color='red'>Klausimas: ".$EventQuestion."</font><br>";
+	echo "<font color='red' size='6'><b>Klausimas: ".$EventQuestion."</b></font><br>";
 	
-	//Egzistuoja kvailas bugas kuris pjaunasi su SQL komandomis, jeigu submissionuose naudoja apostrofą, gali viskas susipjauti.
-	//Todėl šita kodo dalis, tai apsaugo.
-	//UPDATE. Kaip rašiau kodą, nežinojau apie mysqli espace string dalyką, todel jo kaip ir nebereik.
-	/*if(isset($_COOKIE["submissionNickname"]))
-	{
-		$temporaryCookie = $_COOKIE["submissionNickname"];
-		for($i = 0; $i < strlen($temporaryCookie); $i++)
-		{
-			if($temporaryCookie[$i] == "'")
-			{
-				setcookie("submissionNickname", null);
-				break;
-			}
-		}
-	}*/
 	
 	//Tikrina ar jau kažkas laimėjo, jeigu ne atkuria spėjimo "mechanizmą", jeigu jau laimėjo, jo nesukuria bei praneša apie tai.
 	if($EventStatus == 0)
@@ -184,6 +240,7 @@ require 'includes/laikiuxduombaze.php';
 		//Vyksta pats tikrinimas iš databazės
 		if($shouldWeCheckIfItsCorrectAnswer)
 		{
+			$resultIfWrongAnswer = "<font color='red'>Deja, atsakymas nėra teisingas</font><br>";
 			$nickname = $_POST['nickname'];
 			$submission = $_POST['submission']; 
 			//Tikrinimas vėl iš duombazės ar nėra laimėtojo jau.
@@ -202,6 +259,23 @@ require 'includes/laikiuxduombaze.php';
 				}
 			}
 
+			//Patikrinimas ar žaidėjas nėra laimėjas per paskutiniasias 25 valandas.
+			$sqlCheckPreviousLaikiuxWinners = "select * from LaikiuxCredits where ip='$UserioIP'";
+			$resultsSqlCheckPreviousLaikiuxWinners = mysqli_query($conn, $sqlCheckPreviousLaikiuxWinners);
+			if(mysqli_num_rows($resultsSqlCheckPreviousLaikiuxWinners) > 0)
+			{
+				while($row = mysqli_fetch_assoc($resultsSqlCheckPreviousLaikiuxWinners))
+				{
+					if($dabartineData < $row['bannedTill'])
+					{
+						$canICheckAnswer = false;
+						echo "<font color='red'>Atsakyti į klausimą galima tik kartą per 25 valandas. Galėsite: ".$row['bannedTill']."</font>";
+						$resultIfWrongAnswer = null;
+						break;
+					}
+				}
+			}
+
 			if(strtolower($EventAnswer) == strtolower($submission) && $canICheckAnswer) // "sklandus patikrinimas" t.y. sumažina abi reikšmes į mažąsias. Ir chekinimas del dubliu.
 			{
 				$sqlSomebodyHasWon = "update LaikiuxSubmission SET HasAnyoneWon='1' where id='1'";
@@ -213,15 +287,39 @@ require 'includes/laikiuxduombaze.php';
 				$sqlInsertNewWinner = "insert into LaikiuxWinners (Nickname, organizer, winnerIp) VALUES ('$winnerText','$EventOrganizer', '$winnerIpForPrizeProtection')";
 				
 				
-				//vip uždėjimas
+				//kreditu davimas
 
-				if(true) //veliau pakeist gal i kazka normalesnio
+				$sqlGetCreditCount = "select * from LaikiuxCredits where ip='$UserioIP'";
+				$resultSqlGetCreditCount = mysqli_query($conn, $sqlGetCreditCount);
+
+				$arIPEgzistuojaDuombazeje = false;
+				$currentCreditCount = 0;
+
+				if (mysqli_num_rows($resultSqlGetCreditCount) > 0) 
 				{
-					$twoDaysAfterToday = date("Y-m-d", time() + 172800);
-					$sqlInsertIntoLaikiuxDatabase = "insert into sm_admins (authtype, identity, flags, name, immunity, gr_time_left) 
-						VALUES ('ip', '$winnerIpForPrizeProtection', 'ap', 'laimetojas is tortonas.tk', '98', '$twoDaysAfterToday')";
+				    while($row = mysqli_fetch_assoc($resultSqlGetCreditCount))
+				    {
+				        if($UserioIP == $row['ip'])
+			        	{
+			        		$currentCreditCount = $row['credits'];
+			        		$arIPEgzistuojaDuombazeje = true;
+			        	}
+				    }
+				}
 
-					mysqli_query($connLaikiux, $sqlInsertIntoLaikiuxDatabase);
+				//jeigu egzistuoja, tai ji paupdatina
+				$bannedTillDate = date('Y-m-d H:i:s', strtotime("+25 hours"));
+				if($arIPEgzistuojaDuombazeje)
+				{
+					$newCreditCount = $currentCreditCount + 1;
+					$sqlUpdateCreditOwner = "update LaikiuxCredits set credits='$newCreditCount', nick='$nickname', bannedTill='$bannedTillDate' where ip='$UserioIP'";
+					mysqli_query($conn, $sqlUpdateCreditOwner);
+				}
+				//jeigu ne, tada sukuria nauja
+				else
+				{
+					$sqlCreateNewCreditOwner = "insert into LaikiuxCredits (ip, credits, nick, bannedTill) VALUES ('$UserioIP', '1', '$nickname', '$bannedTillDate')";
+					mysqli_query($conn, $sqlCreateNewCreditOwner);
 				}
 
 				if(mysqli_query($conn, $sqlInsertNewWinner))
@@ -238,7 +336,7 @@ require 'includes/laikiuxduombaze.php';
 			}
 			else
 			{
-				echo "<font color='red'>Deja, atsakymas nėra teisingas</font><br>";
+				echo $resultIfWrongAnswer;
 			}
 		}
 	}
@@ -269,11 +367,16 @@ require 'includes/laikiuxduombaze.php';
 	
 	if(mysqli_num_rows($winners) > 0)
 	{
-		echo "<br>Paskutiniai laimėtojai:<br>";
+		echo "<br>Paskutiniai 7 laimėtojai:<br>";
 		//Eina per DB eilučių masyvą
+		$maximumas = 7;
+		$currentKiekis = 0;
 		while($row = mysqli_fetch_assoc($winners))
 		{
+			if($currentKiekis >= $maximumas)
+				break;
 			echo $row['Nickname'];
+			$currentKiekis++;
 			if($WhichAdminLevel > 1)
 			{
 				echo " (".$row['winnerIp'].")<br>"; //sitas reikalinga del to, kad kartais zaidejai savinasi kitu zaideju nickus ir bando apgaut, kad tipo jie laimejo.
@@ -291,8 +394,151 @@ require 'includes/laikiuxduombaze.php';
 	}
 	
 	echo "<br>";
+
+
+	//Kodas kuris parodys vartotojui kiek jis turi galimybių aktyvuoti vipą.
+	$creditCount = 0;
+
+	$sqlGetCreditCount = "select * from LaikiuxCredits where ip='$UserioIP'";
+	$resultSqlGetCreditCount = mysqli_query($conn, $sqlGetCreditCount);
+
+	if (mysqli_num_rows($resultSqlGetCreditCount) > 0) 
+	{
+	    while($row = mysqli_fetch_assoc($resultSqlGetCreditCount))
+	    {
+	        if($UserioIP == $row['ip'])
+	        	$creditCount = $row['credits'];
+	    }
+	}
+
+	echo "<font color='red'>VIP aktyvacija.</font> Vipas trunka 2 dienas įskaitant šią likusią dieną bei visą rytojų<br>";
+	echo "Kiek kartų galite aktyvuoti VIP: <font color='red'>".$creditCount.'</font>';
+	echo '<form method="POST">';
+	echo "Pasirinkite serverį: ";
+	echo '<select name="serveris">';
+    echo '<option value="jailbreak">Jailbreak</option>';
+    echo '<option value="forfun">Forfun</option>';
+    echo '<option value="surf">Surf</option>';
+	echo '</select><br>';
+	echo "Pasirinkite ant ko norite VIP: ";
+	echo '<select name="authTipas">';
+    echo '<option value="ip">IP</option>';
+    echo '<option value="steamid">SteamID</option>';
+	echo '</select><br>';
+	//kaip zmogus tures virs 0 kreditu, jam rasys jo dabartini IP
+	if($creditCount > 0)
+		echo '<input name="steamidorip" placeholder="SteamID arba IP" value="'.$UserioIP.'"></input><br>';
+	else
+		echo '<input name="steamidorip" placeholder="SteamID arba IP"></input><br>';
+	echo '<button name="getVip">Aktyvuoti VIP</button>';
+	echo '</form>';
+
+	if(isset($_POST['getVip']))
+	{
+		//patikrina ar irase steamid arba ip
+		if($_POST['steamidorip'] != null)
+		{
+			//Tai turi padaryti is naujo, kad nebugintu su daug tabu.
+			$sqlGetCreditCount = "select * from LaikiuxCredits where ip='$UserioIP'";
+			$resultSqlGetCreditCount = mysqli_query($conn, $sqlGetCreditCount);
+			if (mysqli_num_rows($resultSqlGetCreditCount) > 0) 
+			{
+			    while($row = mysqli_fetch_assoc($resultSqlGetCreditCount))
+			    {
+			        if($UserioIP == $row['ip'])
+			        	$creditCount = $row['credits'];
+			    }
+			}
+
+			if($creditCount > 0)
+			{
+				//uzdeda vipa, decreasina counta
+				$newCreditCount = $creditCount - 1;
+				$sqlDecreaseCount = "update LaikiuxCredits set credits='$newCreditCount' where ip='$UserioIP'";
+				mysqli_query($conn, $sqlDecreaseCount);
+
+				$steamIDarbaIP = mysqli_real_escape_string($conn, $_POST['steamidorip']);
+				$twoDaysAfterToday = date("Y-m-d", time() + 172800);
+
+
+				if($_POST['serveris'] == "jailbreak")
+				{
+					if($_POST['authTipas'] == "ip")
+					{
+						$sqlInsertIntoLaikiuxDatabase = "insert into sm_admins (authtype, identity, flags, name, immunity, gr_time_left) 
+							VALUES ('ip', '$steamIDarbaIP', 'ap', 'vipas is tortonas.tk', '98', '$twoDaysAfterToday')";
+
+						mysqli_query($connJailbreak, $sqlInsertIntoLaikiuxDatabase);
+					}
+					//steamid
+					else
+					{
+						
+						$sqlInsertIntoLaikiuxDatabase = "insert into sm_admins (authtype, identity, flags, name, immunity, gr_time_left) 
+							VALUES ('steam', '$steamIDarbaIP', 'ap', 'vipas is tortonas.tk', '98', '$twoDaysAfterToday')";
+
+						mysqli_query($connJailbreak, $sqlInsertIntoLaikiuxDatabase);
+					}
+					echo "<font color='red'>VIP sėkmingai aktyvuotas ant ".$steamIDarbaIP." Jailbreak serveryje!</font>";
+				}
+
+				if($_POST['serveris'] == "forfun")
+				{
+					if($_POST['authTipas'] == "ip")
+					{
+						$sqlInsertIntoLaikiuxDatabase = "insert into sm_admins (authtype, identity, flags, name, immunity, gr_time_left) 
+							VALUES ('ip', '$steamIDarbaIP', 'ap', 'vipas is tortonas.tk', '98', '$twoDaysAfterToday')";
+
+						mysqli_query($connForfun, $sqlInsertIntoLaikiuxDatabase);
+					}
+					//steamid
+					else
+					{
+						
+						$sqlInsertIntoLaikiuxDatabase = "insert into sm_admins (authtype, identity, flags, name, immunity, gr_time_left) 
+							VALUES ('steam', '$steamIDarbaIP', 'ap', 'vipas is tortonas.tk', '98', '$twoDaysAfterToday')";
+
+						mysqli_query($connForfun, $sqlInsertIntoLaikiuxDatabase);
+					}
+					echo "<font color='red'>VIP sėkmingai aktyvuotas ant ".$steamIDarbaIP." Forfun serveryje!</font>";
+				}
+
+				if($_POST['serveris'] == "surf")
+				{
+					if($_POST['authTipas'] == "ip")
+					{
+						$sqlInsertIntoLaikiuxDatabase = "insert into sm_admins (authtype, identity, flags, name, immunity, gr_time_left) 
+							VALUES ('ip', '$steamIDarbaIP', 'ap', 'vipas is tortonas.tk', '98', '$twoDaysAfterToday')";
+
+						mysqli_query($connSurf, $sqlInsertIntoLaikiuxDatabase);
+					}
+					//steamid
+					else
+					{
+						
+						$sqlInsertIntoLaikiuxDatabase = "insert into sm_admins (authtype, identity, flags, name, immunity, gr_time_left) 
+							VALUES ('steam', '$steamIDarbaIP', 'ap', 'vipas is tortonas.tk', '98', '$twoDaysAfterToday')";
+
+						mysqli_query($connSurf, $sqlInsertIntoLaikiuxDatabase);
+					}
+					echo "<font color='red'>VIP sėkmingai aktyvuotas ant ".$steamIDarbaIP." Jailbreak serveryje!</font>";
+				}
+			}
+			else
+			{
+				echo "<font color='red'>Neturite aktyvacijos kreditų!</font><br>";
+			}
+		}
+		else
+		{
+			echo "<font color='red'>Neįrašėte SteamID arba IP!</font><br>";
+		}
+	}
+
+	echo "<br>";
 	
 	//Admin Panelė. Admin privilegijos, jeigu "1", tai paprastas adminas, jeigu "2", tai gali pridėti ir kitus adminus.
+	// --------------------------- Admin sistemos pradžia ---------------------------------------
 	if($WhichAdminLevel > 0)
 	{
 		echo "Admin panel (tai mato tik administratorius)<br>";
@@ -349,7 +595,11 @@ require 'includes/laikiuxduombaze.php';
 				$NewAnswer = mysqli_real_escape_string($conn, $_POST['newanswer']);
 				$NewPrize = mysqli_real_escape_string($conn, $_POST['newprize']);
 				$NewPhotoUrl = mysqli_real_escape_string($conn, $_POST['newphoto']);
-				$sqlCreateNewEvent = "update LaikiuxSubmission SET HasAnyoneWon='0', answer='$NewAnswer', prize='$NewPrize', photolink='$NewPhotoUrl', question='$NewQuestion', organizer='$AdminNickname' where id='1';";
+
+				$dataPakeitimui = date('Y-m-d', strtotime("+1 day"))." 18:00:00";
+
+				$sqlCreateNewEvent = "update LaikiuxSubmission SET HasAnyoneWon='0', answer='$NewAnswer', prize='$NewPrize', photolink='$NewPhotoUrl',
+				 question='$NewQuestion', organizer='$AdminNickname', dateTime='$dataPakeitimui' where id='1';";
 				if(mysqli_query($conn, $sqlCreateNewEvent))
 				{
 					echo "Konkursas sukurtas"; 
@@ -459,6 +709,67 @@ require 'includes/laikiuxduombaze.php';
 		}
 		
 		echo "<br>";
+
+		echo "Klausimų pridėjimas į automatizuotai atsinaujinančią duomenų bazę:";
+		echo '<form method="POST">';
+		echo '<input name="newquestionQueue" placeholder="Question"></input><br>';
+		echo '<input name="newanswerQueue" placeholder="Answer"></input><br>';
+		echo '<input name="newprizeQueue" placeholder="Prize"></input><br>';
+		echo '<input name="newphotoQueue" placeholder="Photo url"></input><br>';
+		echo '<input name="newOrganizerQueue" placeholder="Organizer" value="'.$AdminNickname.'"></input><br>';
+		echo '<button name="submitneweventbuttonQueue">Pridėti naują klausimą į klausimų duomenų bazę</button>';
+		echo '</form>';
+		echo '<br>';
+		
+		if(isset($_POST['submitneweventbuttonQueue']))
+		{
+			$shouldWeAddNewEvent = true;
+			if($_POST['newquestionQueue'] == null)
+			{
+				$shouldWeAddNewEvent = false;
+				echo "<font color='red'>Neįrašėte naujo klausimo</font><br>";
+			}
+			if($_POST['newanswerQueue'] == null)
+			{
+				$shouldWeAddNewEvent = false;
+				echo "<font color='red'>Neįrašėte naujo atsakymo</font><br>";
+			}
+			if($_POST['newprizeQueue'] == null)
+			{
+				$shouldWeAddNewEvent = false;
+				echo "<font color='red'>Neįrašėte naujo prizo</font><br>";
+			}
+			if($_POST['newphotoQueue'] == null)
+			{
+				$shouldWeAddNewEvent = false;
+				echo "<font color='red'>Neįrašėte naujos nuotraukos URL. Pastaba: privalo baigtis su .png .jpg etc</font><br>";
+			}
+			if($_POST['newphotoQueue'] == null)
+			{
+				$shouldWeAddNewEvent = false;
+				echo "<font color='red'>Neįrašėte organizatoriaus slapyvardžio!</font><br>";
+			}
+			if($shouldWeAddNewEvent)
+			{
+				$NewQuestion = mysqli_real_escape_string($conn, $_POST['newquestionQueue']);
+				$NewAnswer = mysqli_real_escape_string($conn, $_POST['newanswerQueue']);
+				$NewPrize = mysqli_real_escape_string($conn, $_POST['newprizeQueue']);
+				$NewPhotoUrl = mysqli_real_escape_string($conn, $_POST['newphotoQueue']);
+				$NewOrganizer = mysqli_real_escape_string($conn, $_POST['newOrganizerQueue']);
+
+
+				$sqlUploadNewQuestion = "insert into LaikiuxQuestions (question, answer, prize, photolink, organizer) 
+					VALUES ('$NewQuestion', '$NewAnswer', '$NewPrize', '$NewPhotoUrl', '$NewOrganizer')";
+				if(mysqli_query($conn, $sqlUploadNewQuestion))
+				{
+					echo "Klausimas sėkmingai pridėtas!<br>"; 
+				}
+				else
+					echo "Error: ".mysqli_error($conn); //Šitas erroras neturetu suveikt, nes escapinam stringa
+			}
+		}
+
+		echo "<br>";
 		
 		//Pridėjimas/ištrinimas naujo admin. Mato tik adminai su 2 arba daugiau leveliu.
 		if($WhichAdminLevel > 1)
@@ -534,6 +845,7 @@ require 'includes/laikiuxduombaze.php';
 		}
 		
 	}
+	// --------------------------- Admin sistemos pabaiga ---------------------------------------
 	
 	echo "<br>";
 	
@@ -552,11 +864,16 @@ require 'includes/laikiuxduombaze.php';
 		}
 	}
 	
-
+	if($EventStatus == 1)
+	{
+		$newDate = date($EventDateTime, strtotime("+1 day"));
+		echo "<br>Naujas klausimas automatiškai susigeneruos: ".date($newDate, strtotime("+1 day"));
+	}
 
 	echo "<p align='right'>Svetainės kūrėjas © <a href='https://steamcommunity.com/id/tortonas' target='_blank'>Tortonas</a>, ";
 	echo "<p align='right'><a href='https://github.com/Tortonas/Event-quiz' target='_blank'>Github open source</a>, ";
 	echo date("Y")."</p>";
+
 	mysqli_close($conn);
 ?>
 
