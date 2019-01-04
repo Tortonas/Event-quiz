@@ -122,7 +122,7 @@ require 'includes/laikiuxduombaze.php';
 	//---------------------------------------------------------------------------------------------------------------------
 
 	echo "Sveiki atvykę į Laikiux daily quiz<br>";
-	echo "<font color='red'>Užsidėja VIP, paprašykite, kad adminas in game parašytu /reloadadmins arba jums paslauga užsidės po mapo :))))</font><br>";
+	echo "<font color='red'>Nuo šiol klausimai bus sudėtingi, reikės pasukti galvą bei pasigooglinti, dėl mano fantazijos stygio :3</font><br>";
 	echo "<a href='".$WebDomain."/salygos.txt'>Konkurso taisyklės bei bendra informacija</a><br>";
 
 	date_default_timezone_set("Europe/Vilnius");
@@ -241,8 +241,8 @@ require 'includes/laikiuxduombaze.php';
 		if($shouldWeCheckIfItsCorrectAnswer)
 		{
 			$resultIfWrongAnswer = "<font color='red'>Deja, atsakymas nėra teisingas</font><br>";
-			$nickname = $_POST['nickname'];
-			$submission = $_POST['submission']; 
+			$nickname = mysqli_real_escape_string($conn, $_POST['nickname']);
+			$submission = mysqli_real_escape_string($conn, $_POST['submission']); 
 			//Tikrinimas vėl iš duombazės ar nėra laimėtojo jau.
 			$sqlCheckIfThereIsAWinner = "select HasAnyoneWon from LaikiuxSubmission";
 			$checkIfThereIsAWinnerInCaseOfDuplicate = mysqli_query($conn, $sqlCheckIfThereIsAWinner);
@@ -431,6 +431,10 @@ require 'includes/laikiuxduombaze.php';
 	else
 		echo '<input name="steamidorip" placeholder="SteamID arba IP"></input><br>';
 	echo '<button name="getVip">Aktyvuoti VIP</button>';
+	if($creditCount > 0)
+	{
+		echo "<br><font color='red'>Paspaudus aktyvuoti VIP luktelkite kokias ~7 sekundes kol refreshinsis puslapis</font><br>";
+	}
 	echo '</form>';
 
 	if(isset($_POST['getVip']))
@@ -438,6 +442,7 @@ require 'includes/laikiuxduombaze.php';
 		//patikrina ar irase steamid arba ip
 		if($_POST['steamidorip'] != null)
 		{
+			$nicknameOfUser = null;
 			//Tai turi padaryti is naujo, kad nebugintu su daug tabu.
 			$sqlGetCreditCount = "select * from LaikiuxCredits where ip='$UserioIP'";
 			$resultSqlGetCreditCount = mysqli_query($conn, $sqlGetCreditCount);
@@ -446,12 +451,17 @@ require 'includes/laikiuxduombaze.php';
 			    while($row = mysqli_fetch_assoc($resultSqlGetCreditCount))
 			    {
 			        if($UserioIP == $row['ip'])
+			        {
 			        	$creditCount = $row['credits'];
+			        	$nicknameOfUse = mysqli_real_escape_string($conn, $row['nick']);
+			        }
 			    }
 			}
 
 			if($creditCount > 0)
 			{
+				include_once("includes/rcon.class.php");  
+			
 				//uzdeda vipa, decreasina counta
 				$newCreditCount = $creditCount - 1;
 				$sqlDecreaseCount = "update LaikiuxCredits set credits='$newCreditCount' where ip='$UserioIP'";
@@ -460,68 +470,107 @@ require 'includes/laikiuxduombaze.php';
 				$steamIDarbaIP = mysqli_real_escape_string($conn, $_POST['steamidorip']);
 				$twoDaysAfterToday = date("Y-m-d", time() + 172800);
 
+				$arGaliuUzdetPaslauga = true;
+				//Patikrinimas ar IP/STEAMID turi paslauga. Jeigu turi, naujos neuzdeda, bet kreditas buna vis tiek nuskaiciuotas kaip bausme (nes noreta uzsidet ne sau).
+				$sqlCheckIfAuthHasPrivilege = "SELECT * FROM sm_admins WHERE identity='$steamIDarbaIP'";
+				$resultsCheckIfAuthHasPrivilege = mysqli_query($connJailbreak, $sqlCheckIfAuthHasPrivilege);
+				$row = mysqli_fetch_assoc($resultsCheckIfAuthHasPrivilege);
 
-				if($_POST['serveris'] == "jailbreak")
+				if($row['identity'] == null)
 				{
-					if($_POST['authTipas'] == "ip")
-					{
-						$sqlInsertIntoLaikiuxDatabase = "insert into sm_admins (authtype, identity, flags, name, immunity, gr_time_left) 
-							VALUES ('ip', '$steamIDarbaIP', 'ap', 'vipas is tortonas.tk', '98', '$twoDaysAfterToday')";
-
-						mysqli_query($connJailbreak, $sqlInsertIntoLaikiuxDatabase);
-					}
-					//steamid
-					else
-					{
-						
-						$sqlInsertIntoLaikiuxDatabase = "insert into sm_admins (authtype, identity, flags, name, immunity, gr_time_left) 
-							VALUES ('steam', '$steamIDarbaIP', 'ap', 'vipas is tortonas.tk', '98', '$twoDaysAfterToday')";
-
-						mysqli_query($connJailbreak, $sqlInsertIntoLaikiuxDatabase);
-					}
-					echo "<font color='red'>VIP sėkmingai aktyvuotas ant ".$steamIDarbaIP." Jailbreak serveryje!</font>";
+					$arGaliuUzdetPaslauga = true; //nieko nekeicia realiai
+				}
+				else
+				{
+					echo "<font color='red'>Šis auth turi paslaugą, draudžiama dėt kitiems paslaugas! Kreditas buvo nuskaičiuotas.</font><br>";
+					$arGaliuUzdetPaslauga = false;
 				}
 
-				if($_POST['serveris'] == "forfun")
+				if($arGaliuUzdetPaslauga)
 				{
-					if($_POST['authTipas'] == "ip")
+					if($_POST['serveris'] == "jailbreak")
 					{
-						$sqlInsertIntoLaikiuxDatabase = "insert into sm_admins (authtype, identity, flags, name, immunity, gr_time_left) 
-							VALUES ('ip', '$steamIDarbaIP', 'ap', 'vipas is tortonas.tk', '98', '$twoDaysAfterToday')";
+						if($_POST['authTipas'] == "ip")
+						{
+							$sqlInsertIntoLaikiuxDatabase = "insert into sm_admins (authtype, identity, flags, name, immunity, gr_time_left) 
+								VALUES ('ip', '$steamIDarbaIP', 'ap', 'vipas is tortonas.eu', '98', '$twoDaysAfterToday')";
 
-						mysqli_query($connForfun, $sqlInsertIntoLaikiuxDatabase);
+							mysqli_query($connJailbreak, $sqlInsertIntoLaikiuxDatabase);
+						}
+						//steamid
+						else
+						{
+							
+							$sqlInsertIntoLaikiuxDatabase = "insert into sm_admins (authtype, identity, flags, name, immunity, gr_time_left) 
+								VALUES ('steam', '$steamIDarbaIP', 'ap', 'vipas is tortonas.eu', '98', '$twoDaysAfterToday')";
+
+							mysqli_query($connJailbreak, $sqlInsertIntoLaikiuxDatabase);
+						}
+						echo "<font color='red'>VIP sėkmingai aktyvuotas ant ".$steamIDarbaIP." Jailbreak serveryje!</font><br>";
+						$jailbreak = new rcon($BendrasServeriuIP, $JailbreakPort, $JailbreakRCON);
+						$jailbreak->Auth();  
+						var_dump($jailbreak->rconCommand("sm_reloadadmins"));
+						var_dump($jailbreak->rconCommand("sm_reloadccc"));
+						var_dump($jailbreak->rconCommand("say [tortonas.eu/event] - ".$nicknameOfUse." aktyvavosi vipą!"));
+						var_dump($jailbreak->rconCommand("say [tortonas.eu/event] - ".$nicknameOfUse." aktyvavosi vipą!"));
+						var_dump($jailbreak->rconCommand("say [tortonas.eu/event] - ".$nicknameOfUse." aktyvavosi vipą!"));
 					}
-					//steamid
-					else
+
+					if($_POST['serveris'] == "forfun")
 					{
-						
-						$sqlInsertIntoLaikiuxDatabase = "insert into sm_admins (authtype, identity, flags, name, immunity, gr_time_left) 
-							VALUES ('steam', '$steamIDarbaIP', 'ap', 'vipas is tortonas.tk', '98', '$twoDaysAfterToday')";
+						if($_POST['authTipas'] == "ip")
+						{
+							$sqlInsertIntoLaikiuxDatabase = "insert into sm_admins (authtype, identity, flags, name, immunity, gr_time_left) 
+								VALUES ('ip', '$steamIDarbaIP', 'ap', 'vipas is tortonas.eu', '98', '$twoDaysAfterToday')";
 
-						mysqli_query($connForfun, $sqlInsertIntoLaikiuxDatabase);
+							mysqli_query($connForfun, $sqlInsertIntoLaikiuxDatabase);
+						}
+						//steamid
+						else
+						{
+							
+							$sqlInsertIntoLaikiuxDatabase = "insert into sm_admins (authtype, identity, flags, name, immunity, gr_time_left) 
+								VALUES ('steam', '$steamIDarbaIP', 'ap', 'vipas is tortonas.eu', '98', '$twoDaysAfterToday')";
+
+							mysqli_query($connForfun, $sqlInsertIntoLaikiuxDatabase);
+						}
+						echo "<font color='red'>VIP sėkmingai aktyvuotas ant ".$steamIDarbaIP." Forfun serveryje!</font><br>";
+						$forfun = new rcon($BendrasServeriuIP, $ForfunPort, $ForfunRCON);
+						$forfun->Auth();
+						var_dump($forfun->rconCommand("sm_reloadadmins"));
+						var_dump($forfun->rconCommand("sm_reloadccc"));
+						var_dump($forfun->rconCommand("say [tortonas.eu/event] - ".$nicknameOfUse." aktyvavosi vipą!"));
+						var_dump($forfun->rconCommand("say [tortonas.eu/event] - ".$nicknameOfUse." aktyvavosi vipą!"));
+						var_dump($forfun->rconCommand("say [tortonas.eu/event] - ".$nicknameOfUse." aktyvavosi vipą!"));
 					}
-					echo "<font color='red'>VIP sėkmingai aktyvuotas ant ".$steamIDarbaIP." Forfun serveryje!</font>";
-				}
 
-				if($_POST['serveris'] == "surf")
-				{
-					if($_POST['authTipas'] == "ip")
+					if($_POST['serveris'] == "surf")
 					{
-						$sqlInsertIntoLaikiuxDatabase = "insert into sm_admins (authtype, identity, flags, name, immunity, gr_time_left) 
-							VALUES ('ip', '$steamIDarbaIP', 'ap', 'vipas is tortonas.tk', '98', '$twoDaysAfterToday')";
+						if($_POST['authTipas'] == "ip")
+						{
+							$sqlInsertIntoLaikiuxDatabase = "insert into sm_admins (authtype, identity, flags, name, immunity, gr_time_left) 
+								VALUES ('ip', '$steamIDarbaIP', 'ap', 'vipas is tortonas.eu', '98', '$twoDaysAfterToday')";
 
-						mysqli_query($connSurf, $sqlInsertIntoLaikiuxDatabase);
-					}
-					//steamid
-					else
-					{
-						
-						$sqlInsertIntoLaikiuxDatabase = "insert into sm_admins (authtype, identity, flags, name, immunity, gr_time_left) 
-							VALUES ('steam', '$steamIDarbaIP', 'ap', 'vipas is tortonas.tk', '98', '$twoDaysAfterToday')";
+							mysqli_query($connSurf, $sqlInsertIntoLaikiuxDatabase);
+						}
+						//steamid
+						else
+						{
+							
+							$sqlInsertIntoLaikiuxDatabase = "insert into sm_admins (authtype, identity, flags, name, immunity, gr_time_left) 
+								VALUES ('steam', '$steamIDarbaIP', 'ap', 'vipas is tortonas.eu', '98', '$twoDaysAfterToday')";
 
-						mysqli_query($connSurf, $sqlInsertIntoLaikiuxDatabase);
+							mysqli_query($connSurf, $sqlInsertIntoLaikiuxDatabase);
+						}
+						echo "<font color='red'>VIP sėkmingai aktyvuotas ant ".$steamIDarbaIP." Jailbreak serveryje!</font><br>";
+						$surf = new rcon($BendrasServeriuIP, $SurfPort, $SurfRCON);  
+						$surf->Auth(); 
+						var_dump($surf->rconCommand("sm_reloadadmins"));
+						var_dump($surf->rconCommand("sm_reloadccc"));
+						var_dump($surf->rconCommand("say [tortonas.eu/event] - ".$nicknameOfUse." aktyvavosi vipą!"));
+						var_dump($surf->rconCommand("say [tortonas.eu/event] - ".$nicknameOfUse." aktyvavosi vipą!"));
+						var_dump($surf->rconCommand("say [tortonas.eu/event] - ".$nicknameOfUse." aktyvavosi vipą!"));
 					}
-					echo "<font color='red'>VIP sėkmingai aktyvuotas ant ".$steamIDarbaIP." Jailbreak serveryje!</font>";
 				}
 			}
 			else
