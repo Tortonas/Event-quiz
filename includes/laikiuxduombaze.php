@@ -10,7 +10,6 @@
 		//Jeigu prisijungimas blogas, stabdo kodą.
 		die("Prisijungimas jailbreak duomenu bazes buvo blogas<br>".mysqli_connect_error());
 	}
-
 	$dbServer = "*****";
 	$dbUsername = "*****";
 	$dbPassword = "*****";
@@ -22,7 +21,6 @@
 		//Jeigu prisijungimas blogas, stabdo kodą.
 		die("Prisijungimas forfun duomenu bazes buvo blogas<br>".mysqli_connect_error());
 	}
-
 	$dbServer = "*****";
 	$dbUsername = "*****";
 	$dbPassword = "*****";
@@ -35,4 +33,13 @@
 		die("Prisijungimas surf duomenu bazes buvo blogas<br>".mysqli_connect_error());
 	}
 	
+
+	$BendrasServeriuIP = "91.211.247.93";
+	$JailbreakPort = 27016;
+	$ForfunPort = 27015;
+	$SurfPort = 27017;
+
+	$JailbreakRCON = "******";
+	$ForfunRCON = "******";
+	$SurfRCON = "******";
 ?>
