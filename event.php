@@ -2,7 +2,7 @@
 require 'steamauth/steamauth.php';
 require 'includes/mysql_login.php';
 require 'includes/config.php';
-require 'includes/laikiuxduombaze.php';
+//require 'includes/laikiuxduombaze.php';
 //require 'includes/functions.php';
 ?>
 <!DOCTYPE html>
@@ -111,6 +111,23 @@ require 'includes/laikiuxduombaze.php';
 
 		if($arYraNaujasKlausimasDuomenuBazeje)
 		{
+			//perkels dabartini klausima i panaudoju klausimu table
+			//pradzioje nuskaito sena klausima
+			$sqlCopyQuestionToUsedOnes ="select * from LaikiuxSubmission";
+			$resultsCopyQuestionToUsedOnes = mysqli_query($conn, $sqlCopyQuestionToUsedOnes);
+			$row = mysqli_fetch_assoc($laikiuxAdmins);
+			$oldAnswer = $row['answer'];
+			$oldPrize = $row['prize'];
+			$oldPhotoUrl = $row['photolink'];
+			$oldQuestion = $row['question'];
+			$oldAdminNickname = $row['organizer'];
+
+			//veliau issiuncia i kita table
+			//$sqlSendToUsedQuestions = "insert into LaikiuxUsedQuestions (question, answer, prize, photolink, organizer) VALUES 
+			//('$oldQuestion','$oldAnswer', '$oldPrize', '$oldPhotoUrl', '$oldAdminNickname')";
+			//mysqli_query($conn, $sqlSendToUsedQuestions); // NESUTVARKYTAS
+
+
 			$sqlCreateNewEvent = "update LaikiuxSubmission SET HasAnyoneWon='0', answer='$NewAnswer', prize='$NewPrize', photolink='$NewPhotoUrl',
 				question='$NewQuestion', organizer='$AdminNickname', dateTime='$naujaData' where id='1';";
 			mysqli_query($conn, $sqlCreateNewEvent);
@@ -122,7 +139,7 @@ require 'includes/laikiuxduombaze.php';
 	//---------------------------------------------------------------------------------------------------------------------
 
 	echo "Sveiki atvykę į Laikiux daily quiz<br>";
-	echo "<font color='red'>Nuo šiol klausimai bus sudėtingi, reikės pasukti galvą bei pasigooglinti, dėl mano fantazijos stygio :3</font><br>";
+	echo "<font color='red'>Kadangi buvau pašalintas iš S. administratorių, nekontroliuoju paslaugų duomenų bazės. Svetainė suksis, bet paslaugų užsidėt bus neįmanoma.</font><br>";
 	echo "<a href='".$WebDomain."/salygos.txt'>Konkurso taisyklės bei bendra informacija</a><br>";
 
 	date_default_timezone_set("Europe/Vilnius");
@@ -912,11 +929,23 @@ require 'includes/laikiuxduombaze.php';
 			echo $row['nickname']."<br>";
 		}
 	}
+
+	echo "<br>";
 	
 	if($EventStatus == 1)
 	{
 		$newDate = date($EventDateTime, strtotime("+1 day"));
-		echo "<br>Naujas klausimas automatiškai susigeneruos: ".date($newDate, strtotime("+1 day"));
+		echo "<br>Naujas klausimas automatiškai susigeneruos: ".date($newDate, strtotime("+1 day"))."<br>";
+	}
+	$sqlGetQuestionCount = "select * from LaikiuxQuestions";
+	$resultsGetQuestionCount = mysqli_query($conn, $sqlGetQuestionCount);
+	if(mysqli_num_rows($resultsGetQuestionCount) > 0)
+	{
+		echo "Duomenų bazėje liko <font color='green'>".mysqli_num_rows($resultsGetQuestionCount)."</font> klausimai!";
+	}
+	else
+	{
+		echo "Duomenų bazėje liko <font color='red'>".mysqli_num_rows($resultsGetQuestionCount)."</font> klausimų!";
 	}
 
 	echo "<p align='right'>Svetainės kūrėjas © <a href='https://steamcommunity.com/id/tortonas' target='_blank'>Tortonas</a>, ";
