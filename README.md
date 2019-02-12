@@ -1,9 +1,15 @@
-# Event-quiz
-This project was created for CS:GO community server, where players could've guested answers to the questions and win credits.
+# Event quiz
 
+This project was created for CS:GO community server, where players could've guested answers to the questions and win credits. Whenever player answer a question it grants them a credit. Then they are able to cashout that credit and get instant VIP on cs:go server. It renews others database and proceeds couple RCON commands. This program also has administrator interface on the web.
 
-UPDATE 2019 01 04
-Whenever player answer a question it grants them a credit. Then they are able to cashout that credit and get instant VIP on cs:go server. It renews others database and proceeds couple RCON commands.
+# Where I improved
 
-UPDATE 2019 01 20
-This project will not be updated from now on. It still works just fine.
+• In communicating with cs:go servers through RCON. PHP is able to send RCON commands
+
+• In PHP language
+
+• In ability to maintain project
+
+• In MySQL databases
+
+• Bug fixes
