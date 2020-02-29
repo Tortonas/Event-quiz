@@ -946,7 +946,7 @@ require 'includes/config.php';
 	}
 
 	echo "<p align='right'>Svetainės kūrėjas © <a href='https://steamcommunity.com/id/tortonas' target='_blank'>Tortonas</a>, ";
-	echo "<p align='right'><a href='https://github.com/Tortonas/Event-quiz' target='_blank'>Github open source</a>, ";
+	echo "<p align='right'><a href='https://github.com/kasteckis/Event-quiz' target='_blank'>Github open source</a>, ";
 	echo date("Y")."</p>";
 
 	mysqli_close($conn);
